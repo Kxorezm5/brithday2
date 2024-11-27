@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HAPPY BIRTHDAY</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        body {
+            background: #222222;
+            font-family: Trebuchet MS, sans-serif;
+            color: #00FFFF;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 20px;
+            font-size: 32px;
+            animation: glow 1.5s infinite alternate;
+        }
+        h2 {
+            font-size: 24px;
+            animation: glow 2s infinite alternate-reverse;
+        }
+        @keyframes glow {
+            0% {
+                text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
+            }
+            100% {
+                text-shadow: 0 0 20px #00FFFF, 0 0 30px #00FFFF;
+            }
+        }
+        .fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <h1>HAPPY BIRTHDAY</h1>
+    <h2 id="birthday-name"></h2>
+    <canvas class="fireworks"></canvas>
+    <audio id="backgroundMusic" src="https://cdn.prinsh.com/data-1/mp3/alan-walker_alone-remix.mp3" loop="1"></audio>
+
+    <script>
+        // URL parametridan ismni olish
+        const urlParams = new URLSearchParams(window.location.search);
+        const personName = urlParams.get('tugilgankunegasi');
+        if (personName) {
+            document.getElementById('birthday-name').textContent = personName;
+        } else {
+            document.getElementById('birthday-name').textContent = "Do'stim";
+        }
+
+        // Musiqa ijrosi uchun ruxsat so'rash
+        function requestAutoplayPermission() {
+            const audioElement = document.getElementById("backgroundMusic");
+
+            // Musiqa ijro etishga urinish
+            audioElement.play().then(() => {
+                console.log("Musiqa muvaffaqiyatli ijro etildi.");
+            }).catch(() => {
+                alert("Musiqani ijro qilish uchun ruxsat talab qilinmoqda.");
+                const userConsent = confirm("Musiqani ijro qilishga ruxsat bering. Ruxsat bermasangiz, sahifa qayta yuklanadi.");
+                if (userConsent) {
+                    // Agar foydalanuvchi ruxsat bersa, qo'shimcha hodisani kuzatamiz
+                    document.addEventListener('click', function retryPlay() {
+                        audioElement.play().then(() => {
+                            console.log("Musiqa muvaffaqiyatli ijro etildi.");
+                            document.removeEventListener('click', retryPlay); // Hodisani olib tashlash
+                        }).catch(err => {
+                            console.error("Ijro muammosi:", err);
+                            location.reload(); // Sahifani qayta yuklash
+                        });
+                    });
+                } else {
+                    location.reload(); // Agar ruxsat berilmasa, sahifa qayta yuklanadi
+                }
+            });
+        }
+
+        // Autoplayni so'rash funksiyasini chaqirish
+        window.onload = requestAutoplayPermission;
+
+        // Salyut animatsiyasi
+        const canvas = document.querySelector(".fireworks");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        class Particle {
+            constructor(x, y, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.velocity.x *= 0.98;
+                this.velocity.y *= 0.98;
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.02;
+            }
+        }
+
+        class Firework {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                this.particles = [];
+                this.exploded = false;
+                this.velocity = { x: Math.random() * 2 - 1, y: Math.random() * -4 - 4 };
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                }
+                this.particles.forEach((particle) => particle.draw());
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.x += this.velocity.x;
+                    this.y += this.velocity.y;
+                    if (this.y <= Math.random() * (canvas.height / 2)) {
+                        this.exploded = true;
+                        for (let i = 0; i < 50; i++) {
+                            const angle = (Math.PI * 2) / 50 * i;
+                            const speed = Math.random() * 3 + 2;
+                            this.particles.push(new Particle(
+                                this.x,
+                                this.y,
+                                this.color,
+                                {
+                                    x: Math.cos(angle) * speed,
+                                    y: Math.sin(angle) * speed,
+                                }
+                            ));
+                        }
+                    }
+                }
+
+                this.particles.forEach((particle, index) => {
+                    if (particle.alpha <= 0) {
+                        this.particles.splice(index, 1);
+                    } else {
+                        particle.update();
+                    }
+                });
+            }
+        }
+
+        const fireworks = [];
+
+        function addFirework() {
+            const x = Math.random() * canvas.width;
+            const y = canvas.height;
+            fireworks.push(new Firework(x, y));
+        }
+
+        function animate() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            fireworks.forEach((firework, index) => {
+                firework.update();
+                firework.draw();
+
+                if (firework.particles.length === 0 && firework.exploded) {
+                    fireworks.splice(index, 1);
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        setInterval(addFirework, 200);
+        animate();
+    </script>
+</body>
+</html>
